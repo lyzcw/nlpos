@@ -119,6 +119,7 @@ public class nlpos extends CordovaPlugin {
                         swipdRead.swiper = n900Device.getK21Swiper();
                         Map map0 = new HashMap();
                         map0 = swipdRead.readExpress();
+                        map0.put("event","readcard");
                         Log.d(LOG_TAG, (new JSONObject(map0)).toString() );
                         Constant.asynMsg = (new JSONObject(map0)).toString();
                         sendUpdate( new JSONObject(map0), true );
@@ -143,6 +144,7 @@ public class nlpos extends CordovaPlugin {
                             rfCardRead.authenticateByExtendKey();
                             Map map0 = new HashMap();
                             map0 = rfCardRead.readBlock();
+                            map0.put("event","readcard");
                             Log.d(LOG_TAG, (new JSONObject(map0)).toString() );
                             Constant.asynMsg = (new JSONObject(map0)).toString();
                             sendUpdate( new JSONObject(map0), true );
@@ -168,6 +170,7 @@ public class nlpos extends CordovaPlugin {
                   }
                   map1.put("status", SUCCESS);
                   map1.put("msg",showMsg);
+                  map1.put("event","readcard");
                   Log.d(LOG_TAG, showMsg);
                   sendUpdate( new JSONObject(map1), true );
                   //asynMsg = new JSONObject(map1);
@@ -185,6 +188,7 @@ public class nlpos extends CordovaPlugin {
                   showMsg = "读卡器开启失败";
                   map1.put("status", FAILED);
                   map1.put("msg",showMsg);
+                  map1.put("event","readcard");
                   sendUpdate( new JSONObject(map1), true );
                   //asynMsg = new JSONObject(map1);
                 }
@@ -200,19 +204,22 @@ public class nlpos extends CordovaPlugin {
             showMsg = "读卡器开启异常：";
             map.put("status", FAILED);
             map.put("msg", showMsg + "\r\n" + e.getMessage() );
+            map.put("event","readcard");
             sendUpdate( new JSONObject(map), true );
           }
         }
       }).start();
-        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, (new JSONObject(map)).toString());
-        pluginResult.setKeepCallback(true);
-        callbackContext.sendPluginResult(pluginResult);
-      // sendUpdate( new JSONObject(map), true );
+        // PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, (new JSONObject(map)).toString());
+        // pluginResult.setKeepCallback(true);
+        // callbackContext.sendPluginResult(pluginResult);
+        map.put("event","readcard");
+        sendUpdate( new JSONObject(map), true );
 
     }else {
-      PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, (new JSONObject(map)).toString());
-      pluginResult.setKeepCallback(true);
-      callbackContext.sendPluginResult(pluginResult);
+      // PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, (new JSONObject(map)).toString());
+      // pluginResult.setKeepCallback(true);
+      // callbackContext.sendPluginResult(pluginResult);
+      sendUpdate( new JSONObject(map), true );
     }
   }
 
@@ -323,9 +330,10 @@ public class nlpos extends CordovaPlugin {
           Map map0 = new HashMap();
           map0.put("status", SUCCESS);
           map0.put("msg", "扫码结束");
+          map0.put("event","scancode");
           Log.d(LOG_TAG, (new JSONObject(map0)).toString() );
           // Constant.asynMsg = (new JSONObject(map0)).toString();
-          sendUpdate( new JSONObject(map0), true );
+          //sendUpdate( new JSONObject(map0), true );
           break;
 
         }
@@ -341,7 +349,8 @@ public class nlpos extends CordovaPlugin {
           map0.put("data", map1);
           Log.d(LOG_TAG, (new JSONObject(map0)).toString() );
           Constant.asynMsg = (new JSONObject(map0)).toString();
-          //sendUpdate( new JSONObject(map0), true );
+          map0.put("event","scancode");
+          sendUpdate( new JSONObject(map0), true );
 //				if (scanner != null) {
 //					scanner.stopScan();
 //				}
@@ -357,6 +366,7 @@ public class nlpos extends CordovaPlugin {
           map0.put("msg", "扫码异常，异常码：" + errorCode + ",异常信息：" + errorMess);
           Log.d(LOG_TAG, (new JSONObject(map0)).toString() );
           Constant.asynMsg = (new JSONObject(map0)).toString();
+          map0.put("event","scancode");
           sendUpdate( new JSONObject(map0), true );
           break;
         }
@@ -378,10 +388,10 @@ public class nlpos extends CordovaPlugin {
    */
   private static void sendUpdate(JSONObject info, boolean keepCallback) {
     if (posCallbackContext != null) {
-//      Map map0 = new HashMap();
-//      map0.put("info", info.toString());
-//      PluginResult result = new PluginResult(PluginResult.Status.OK, new JSONObject(map0) );
-      PluginResult result = new PluginResult(PluginResult.Status.OK, info.toString() );
+      Map map0 = new HashMap();
+      map0.put("info", info.toString());
+      PluginResult result = new PluginResult(PluginResult.Status.OK, new JSONObject(map0) );
+      //PluginResult result = new PluginResult(PluginResult.Status.OK, info.toString() );
       result.setKeepCallback(keepCallback);
       posCallbackContext.sendPluginResult(result);
     }
