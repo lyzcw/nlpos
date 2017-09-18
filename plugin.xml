@@ -24,7 +24,7 @@
         </config-file>
 		
 		<config-file target="AndroidManifest.xml" parent="/manifest/application">
-			<activity android:name="com.openunion.cordova.plugins.nlpos.ScanViewActivity" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+			<activity android:name="com.openunion.cordova.plugins.nlpos.ScanViewActivity" android:theme="@android:style/Theme.NoTitleBar.Fullscreen"/>
 		</config-file>
 
 		<framework src="src/android/nlpos.gradle" custom="true" type="gradleReference"/>
