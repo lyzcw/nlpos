@@ -50,15 +50,11 @@ public class nlpos extends CordovaPlugin {
   @Override
   public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
     Log.d(LOG_TAG, "Execute:" + action + " with :" + args.toString());
+    if (posCallbackContext == null) {
+      posCallbackContext = callbackContext;
+    }
 
     if (action.equals("openCardReader")) {
-      if (posCallbackContext != null) {
-        //callbackContext.success( "NLPos监听器正在运行");
-        //return true;
-      }else {
-        posCallbackContext = callbackContext;
-      }
-
       readTimeout = Long.valueOf((Integer)args.get(0));
       this.openCardReader( callbackContext );
 
@@ -212,7 +208,7 @@ public class nlpos extends CordovaPlugin {
       map.put("timeout", readTimeout + "秒");
       Log.d(LOG_TAG, new JSONObject(map).toString());
       sendUpdate( new JSONObject(map), true );
-      
+
     }else {
       // PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, (new JSONObject(map)).toString());
       // pluginResult.setKeepCallback(true);
@@ -286,10 +282,16 @@ public class nlpos extends CordovaPlugin {
     if (!n900Device.isDeviceAlive()) {
       map = n900Device.connectDevice();
     }
+    map.put("event","scancode");
+    map.put("asyn",false);
+    map.put("timeout", "10秒");
+    Log.d(LOG_TAG, new JSONObject(map).toString());
+    sendUpdate( new JSONObject(map), true );
     if( n900Device.isDeviceAlive()) {
       Scan scan = new Scan(this.n900Device, this.cordova.getActivity());
       scan.scan();
     }
+
   }
 
   private void print( CallbackContext callbackContext, String bill) {
