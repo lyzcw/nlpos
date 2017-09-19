@@ -1,7 +1,7 @@
 package com.openunion.cordova.plugins.nlpos;
 
-import android.app.Dialog;
-import android.content.res.Resources;
+import android.util.Base64DataException;
+import android.util.Base64;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
@@ -11,8 +11,13 @@ import com.newland.mtype.module.common.printer.LiteralType;
 import com.newland.mtype.module.common.printer.Printer;
 import com.newland.mtype.module.common.printer.PrinterResult;
 import com.newland.mtype.module.common.printer.PrinterStatus;
+import com.newland.mtype.module.common.printer.WordStockType;
+import com.newland.mtype.module.common.printer.ThrowType;
 
 import org.apache.cordova.LOG;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,22 +62,61 @@ public class Print {
         return map;
       }
 
-      //if(initPrinter().get("status").equals(SUCCESS)){
-        printer.init();
-        printer.setLineSpace(Integer.parseInt("2"));
-        //Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.big_picture);
-        Bitmap bitmap = BitmapFactory.decodeStream(getClass().getResourceAsStream(Constant.icon_path));
-        PrinterResult printerResult = printer.print(0, bitmap, 30, TimeUnit.SECONDS);
-        showMsg = "图片打印结果：" + printerResult.toString();
-        printer.setDensity(10);
-        PrinterResult printerResult0 = printer.print(bill, 30, TimeUnit.SECONDS);
-        showMsg += "默认字体打印结果：" + printerResult0.toString();
+      printer.init();
+      try {
+        JSONArray billArray = new JSONArray(bill);
+        for( int i=0; i<billArray.length(); i++){
+          JSONObject billObject = billArray.getJSONObject( i );
+          if( billObject.getString("type").equals("title")){
+            printer.setDensity(10);
+            printer.setLineSpace(Integer.parseInt("3"));
+            printer.setWordStock(WordStockType.PIX_16);// 字库
+            printer.setFontType(LiteralType.WESTERN, FontSettingScope.HEIGHT, FontType.DOUBLE);
+            printer.setFontType(LiteralType.WESTERN, FontSettingScope.WIDTH, FontType.DOUBLE);
+            PrinterResult printerResult0 = printer.print( billObject.getString("data"), 30, TimeUnit.SECONDS);
+            showMsg += "标题打印结果：" + printerResult0.toString();
+            LOG.d(LOG_TAG, showMsg);
+          }else if( billObject.getString("type").equals("text")){
+            printer.setDensity(10);
+            printer.setLineSpace(Integer.parseInt("3"));
+            printer.setWordStock(WordStockType.PIX_24);// 字库
+            printer.setFontType(LiteralType.WESTERN, FontSettingScope.HEIGHT, FontType.NORMAL);
+            printer.setFontType(LiteralType.WESTERN, FontSettingScope.WIDTH, FontType.NORMAL);
+            PrinterResult printerResult0 = printer.print( billObject.getString("data"), 30, TimeUnit.SECONDS);
+            showMsg += "内容打印结果：" + printerResult0.toString();
+            LOG.d(LOG_TAG, showMsg);
+          }if( billObject.getString("type").equals("image")){
+            printer.setDensity(10);
+            printer.setLineSpace(Integer.parseInt("0"));
+            printer.setWordStock(WordStockType.PIX_16);// 字库
+            printer.setFontType(LiteralType.WESTERN, FontSettingScope.HEIGHT, FontType.NORMAL);
+            printer.setFontType(LiteralType.WESTERN, FontSettingScope.WIDTH, FontType.NORMAL);
+            String imgStr = billObject.getString("data");
+            int offset = imgStr.indexOf(";base64,") + 8;
+            imgStr=imgStr.substring( offset );
+            byte[] imgByte =Base64.decode(imgStr, Base64.NO_WRAP);//.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray( imgByte, 0, imgByte.length );
+            //Bitmap bitmap = BitmapFactory.decodeStream(getClass().getResourceAsStream(Constant.icon_path));
+            PrinterResult printerResult0 = printer.print(0, bitmap, 30, TimeUnit.SECONDS);
+            //Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.big_picture);
+            // Bitmap bitmap = BitmapFactory.decodeStream(getClass().getResourceAsStream(Constant.icon_path));
+            showMsg += "图片打印结果：" + printerResult0.toString();
+            LOG.d(LOG_TAG, showMsg);
+          }
+        }
+        printer.paperThrow(ThrowType.BY_LINE,2);// 走紙
+
         map.put("status", SUCCESS);
         map.put("msg", showMsg);
         LOG.d(LOG_TAG, showMsg);
         return map;
-      //}
-
+      }catch (JSONException e ) {
+        showMsg += "打印JSON参数传递错误" + e.getMessage();
+        map.put("status", FAILED);
+        map.put("msg", showMsg);
+        LOG.d(LOG_TAG, showMsg);
+        return map;
+      }
     }
     return map;
 
