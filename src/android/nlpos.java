@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import java.util.concurrent.TimeUnit;
+
 /**
  * This class echoes a string called from JavaScript.
  */
@@ -136,9 +137,18 @@ public class nlpos extends CordovaPlugin {
                             showMsg="读卡器识别到非接S50卡";
                             RFCardRead rfCardRead = new RFCardRead();
                             rfCardRead.rfCardModule = n900Device.getRFCardModule();
-                            rfCardRead.m1CardPowerOn();
-                            rfCardRead.authenticateByExtendKey();
-                            map0 = rfCardRead.readBlock();
+                            Map map2 =  rfCardRead.m1CardPowerOn();
+                            if( map2.get("status").equals(SUCCESS)){
+                                Map map3 =  rfCardRead.authenticateByExtendKey();
+                              if( map3.get("status").equals(SUCCESS)){
+                                map0 = rfCardRead.readBlock();
+                              }else{
+                                map0 = map3;
+                              }
+                            }else{
+                              map0 = map2;
+                            }
+
                           } else if (sak == 0x18) {
                             showMsg="读卡器识别到非接S70卡";
                           } else if (sak == 0x28) {

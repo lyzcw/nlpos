@@ -86,7 +86,7 @@ public class Print {
             showMsg += "内容打印结果：" + printerResult0.toString();
             LOG.d(LOG_TAG, showMsg);
           }if( billObject.getString("type").equals("image")){
-            printer.setDensity(10);
+            printer.setDensity(15);
             printer.setLineSpace(Integer.parseInt("0"));
             printer.setWordStock(WordStockType.PIX_16);// 字库
             printer.setFontType(LiteralType.WESTERN, FontSettingScope.HEIGHT, FontType.NORMAL);
@@ -104,7 +104,7 @@ public class Print {
             LOG.d(LOG_TAG, showMsg);
           }
         }
-        printer.paperThrow(ThrowType.BY_LINE,2);// 走紙
+        printer.paperThrow(ThrowType.BY_LINE,1);// 走紙
 
         map.put("status", SUCCESS);
         map.put("msg", showMsg);

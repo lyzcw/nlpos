@@ -27,15 +27,16 @@ public class RFCardRead {
   private static final String FAILED = "failed";
   private String snr;
   private String showMsg = "";
+  private  Map map = new HashMap();
   /**
    * M1卡上电.
    */
-  public void m1CardPowerOn() {
+  public Map m1CardPowerOn() {
     try {
-      new Thread(new Runnable() {
-
-        @Override
-        public void run() {
+//      new Thread(new Runnable() {
+//
+//        @Override
+//        public void run() {
           LOG.d(LOG_TAG, "M1卡上电，请贴非接卡！");
           try {
             List<RFCardType> cardTypeList=new ArrayList<RFCardType>();
@@ -70,24 +71,29 @@ public class RFCardRead {
             LOG.d(LOG_TAG, showMsg);
             showMsg = "寻卡上电完成" + "\r\n";
             LOG.d(LOG_TAG, showMsg);
+            map.put("status", SUCCESS);
           }catch(Exception e){e.fillInStackTrace();
             showMsg = "非接卡寻卡上电异常:" + e.getMessage() + "\r\n";
             LOG.d(LOG_TAG, showMsg);
+            map.put("status", FAILED);
           }
-        }
-      }).start();
-
+//        }
+//      }).start();
+      map.put("msg", showMsg);
     } catch (Exception e) {
       showMsg = "非接卡寻卡上电异常:" + e.getMessage() + "\r\n";
       LOG.d(LOG_TAG, showMsg);
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
     }
 
+    return map;
   }
 
   /**
    * 外认.
    */
-  public void authenticateByExtendKey(){
+  public Map authenticateByExtendKey(){
     try {
       RFKeyMode qpKeyMode = Constant.qpKeyMode;
       int block = Constant.block;
@@ -105,21 +111,27 @@ public class RFCardRead {
       rfCardModule.authenticateByExtendKey(qpKeyMode, snr, block, key);
       showMsg = "非接卡使用外部密钥认证完成";
       LOG.d(LOG_TAG, showMsg);
+      map.put("status", SUCCESS);
+      map.put("msg", showMsg);
     } catch (DeviceInvokeException e) {
       showMsg = e.getMessage();
       LOG.d(LOG_TAG, showMsg);
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
     } catch (Exception e) {
       showMsg = "非接卡外部密钥认证异常" + e ;
       LOG.d(LOG_TAG, showMsg);
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
     }
+
+    return map;
   }
 
   /**
    * 读块.
    */
   public Map readBlock() {
-    Map map = new HashMap();
-
     try {
       int block = Constant.block;
 
