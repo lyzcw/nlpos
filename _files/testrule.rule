@@ -1,0 +1,32 @@
+[
+    {
+        "ruleid": "A001",
+        "section": "0",
+        "num": "2",
+        "key": "ffffffffffff"
+    },
+    {
+        "ruleid": "A002",
+        "section": "4",
+        "num": "2",
+        "key": "ffffffffffff"
+    },
+    {
+        "ruleid": "A003",
+        "section": "6",
+        "num": "3",
+        "key": "ffffffffffff"
+    },
+    {
+        "ruleid": "A004",
+        "section": "9",
+        "num": "2",
+        "key": "ffffffffffff"
+	},
+    {
+        "ruleid": "A005",
+        "section": "11",
+        "num": "2",
+        "key": "ffffffffffff"
+    }
+]

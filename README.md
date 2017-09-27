@@ -28,15 +28,29 @@ nl pos cordova plugin
 ###     --打开读卡器：
     openCardReader(): void {
 	    let promise = new Promise((resolve, reject) => {
-	      let readTimeout = 20;
-	      cordova.plugins.nlpos.openCardReader((readTimeout), data => {
-	      	// 打开读卡器没有同步消息返回，返回消息在readcard事件中监听
-	        resolve(data);
-	      }, error => {
-	        reject(error);
-	      });
-	    });
+      	let params = '{"readTimeout":"30","ruleids":[{"ruleid":"A001"},{"ruleid":"A003"}]}';
+      	cordova.plugins.nlpos.openCardReader((params), data => {
+        this.homeModel.response = "\r\n*******刷卡同步消息*******\r\n" + data;
+        resolve(data);
+      }, error => {
+        reject(error);
+      });
+    });
 	}
+	注："ruleids":[{"ruleid":"A001"},{"ruleid":"A003"}]}'为APP支持的卡标准ID参数，若为空则读取所有的卡标准数据块
+
+###     --载入加密的卡标准参数：
+loadrule(): void {
+    let promise = new Promise((resolve, reject) => {
+      let params = '{"alias":"ouposkey","storepath":"oukeystore.bks","rulepath":"http://10.1.239.11/testrule-e.rule", "storepass":"123456", "keypass":"123456"}';
+      cordova.plugins.nlpos.loadrule( (params), data => {
+        this.homeModel.response = "\r\n*******卡标准加载同步消息*******\r\n" + data;
+        resolve(data);
+      }, error => {
+        reject(error);
+      });
+    });
+  }
 
 ### 	-- 关闭读卡器：
 	closeCardReader(): void {
@@ -110,19 +124,39 @@ nl pos cordova plugin
 	    "event": "readcard",
 	    "asyn": true
 	}
-####  刷卡成功响应：
+####  非接S50卡刷卡成功响应：
 	{
-	    "asyn": true,
-	    "msg": "读块数据完成",
-	    "status": "success",				# 事件成功和失败的状态
-	    "event": "readcard",
-	    "data": {
-	        "block": "2",					# 非接卡数据块号
-	        "typeName": "非接S50",			# 非接卡类型名称
-	        "cardType": "M1CARD",			# 非接卡类型代码
-	        "data": "00000000000000000000000000000000" # 非接卡块数据
-	    }
-	}
+    "asyn": true,											# 是否异步响应
+    "msg": "读数据块完成",
+    "status": "success",									# 事件成功和失败的状态
+    "event": "readcard",
+    "data": [
+        {
+            "block": "0",									# 非接卡数据块号
+            "data": "8B7A84EF9A0804006263646566676869"		# 非接卡块数据
+        },
+        {
+            "block": "1",
+            "data": "00000000000000000000000000000000"
+        },
+        {
+            "block": "2",
+            "data": "00000000000000000000000000000000"
+        },
+        {
+            "block": "4",
+            "data": "00000000000000000000000000000000"
+        },
+        {
+            "block": "5",
+            "data": "00000000000000000000000000000000"
+        },
+        {
+            "block": "6",
+            "data": "00000000000000000000000000000000"
+        }
+    ]
+}
 ####  磁条卡成功响应：
 	{
 	    "asyn": true,
@@ -147,8 +181,13 @@ nl pos cordova plugin
 	    }
 	}
 
+## 6、附件
+	_files/oukeystore.bks	                # 秘钥库文件，服务端用公钥加密，客户端私钥解密，别名alias：ouposkey，密码：123456
+											# 服务端位置自定，客户端放APP的assets/目录下，
+	_files/testrule.rule                    # S50卡标准明文文件
+	_files/testrule-e.rule                  # S50卡标准密文文件，放服务端，位置和url自定
+
 ## 5、TODO：
 	-- 插件中读卡器仅支持S50非接卡和词条卡的数据读取
-	-- 以上两种卡的数据块或磁道数据规范格式待定，当前仅读取个别块和磁道数据
-	-- 打印接口仅支持文本参数传递，文本前打印一固定图片，图文格式待定
+	
 

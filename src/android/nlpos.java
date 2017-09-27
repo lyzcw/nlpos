@@ -16,13 +16,17 @@ import com.newland.mtype.module.common.cardreader.K21CardReader;
 import com.newland.mtype.module.common.cardreader.K21CardReaderEvent;
 
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.provider.SyncStateContract;
 import android.util.Log;
 import android.content.Context;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import java.util.concurrent.TimeUnit;
@@ -51,19 +55,11 @@ public class nlpos extends CordovaPlugin {
   @Override
   public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
     Log.d(LOG_TAG, "Execute:" + action + " with :" + args.toString());
-    if (posCallbackContext == null) {
-      posCallbackContext = callbackContext;
-    }
+    posCallbackContext = callbackContext;
 
     if (action.equals("openCardReader")) {
-      readTimeout = Long.valueOf((Integer)args.get(0));
-      this.openCardReader( callbackContext );
-
-      // Don't return any result now, since status results will be sent when events come in from broadcast receiver
-      PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
-      pluginResult.setKeepCallback(true);
-      callbackContext.sendPluginResult(pluginResult);
-
+      String params = (String) args.get(0);
+      this.openCardReader( callbackContext, params );
       return true;
     }else if (action.equals("closeCardReader")) {
       this.closeCardReader( callbackContext );
@@ -78,11 +74,22 @@ public class nlpos extends CordovaPlugin {
     }else if (action.equals("getAsynMsg")) {
       this.getAsynMsg( callbackContext );
       return true;
+    }else if (action.equals("loadkey")) {
+      String params = (String) args.get(0);
+      this.loadkey( callbackContext, params );
+      return true;
+    }else if (action.equals("loadrule")) {
+      String params = (String) args.get(0);
+      this.loadrule( callbackContext, params );
+      return true;
     }
     return false;
   }
 
-  private void openCardReader( CallbackContext callbackContext ) throws JSONException {
+  private void openCardReader( CallbackContext callbackContext, String params ) throws JSONException {
+    map.clear();
+    final JSONObject paramJson = new JSONObject( params );
+    readTimeout = paramJson.getInt( "readTimeout");
 
     n900Device=N900Device.getInstance(this.cordova);
     n900Device.callbackContext = callbackContext;
@@ -139,12 +146,52 @@ public class nlpos extends CordovaPlugin {
                             rfCardRead.rfCardModule = n900Device.getRFCardModule();
                             Map map2 =  rfCardRead.m1CardPowerOn();
                             if( map2.get("status").equals(SUCCESS)){
-                                Map map3 =  rfCardRead.authenticateByExtendKey();
-                              if( map3.get("status").equals(SUCCESS)){
-                                map0 = rfCardRead.readBlock();
-                              }else{
-                                map0 = map3;
+                              try {
+                                JSONArray ruleidsArray = paramJson.getJSONArray("ruleids");
+                                List blockDataList = new ArrayList();
+                                Map map4 = getReadBlocks( ruleidsArray );
+                                if( map4.get("status").equals(FAILED)){
+                                  map0 = map4;
+                                }else {
+                                  JSONArray jsonArray = (JSONArray) map4.get("data");
+                                  for (int n = 0; n < jsonArray.length(); n++) {
+                                    //按找到的需读块列表读块
+                                    JSONObject jsonObject = jsonArray.getJSONObject(n);
+                                    Map map3 = readRfCard(rfCardRead, jsonObject.getInt("block"), jsonObject.getString("key"));
+                                    if (map3.get("status").equals(SUCCESS)) {
+                                      JSONObject dataJson = new JSONObject( ( HashMap ) map3.get("data") );
+                                      String block = dataJson.getString("block");
+                                      String blockData = dataJson.getString("data");
+                                      Map blockDataMap = new HashMap();
+                                      blockDataMap.put("block", block);
+                                      blockDataMap.put("data", blockData);
+                                      blockDataList.add(blockDataMap);
+                                    } else {
+                                      showMsg = "读数据块：" + jsonObject.getInt("block") + "失败，继续读下一块";
+                                      Log.d(LOG_TAG, showMsg);
+
+                                    }
+                                  }
+                                  if(null!=blockDataList && !blockDataList.isEmpty()) {
+                                    showMsg = "读数据块完成";
+                                    Log.d(LOG_TAG, showMsg);
+                                    map0.put("status", SUCCESS);
+                                    map0.put("msg", showMsg);
+                                    map0.put("data", new JSONArray(blockDataList));
+                                    Log.d(LOG_TAG, new JSONArray(blockDataList).toString());
+                                  }else{
+                                    showMsg = "读数据块失败，没有读到数据";
+                                    Log.d(LOG_TAG, showMsg);
+                                    map0.put("status", FAILED);
+                                    map0.put("msg", showMsg);
+                                  }
+                                }
+                              }catch (Exception e){
+                                e.printStackTrace();
+                                map0.put("status", FAILED);
+                                showMsg="json错误：" + e.getMessage();
                               }
+
                             }else{
                               map0 = map2;
                             }
@@ -213,6 +260,7 @@ public class nlpos extends CordovaPlugin {
           }
         }
       }).start();
+      map.put("msg","读卡器开启完成");
       map.put("event","readcard");
       map.put("asyn",false);
       map.put("timeout", readTimeout + "秒");
@@ -305,6 +353,7 @@ public class nlpos extends CordovaPlugin {
   }
 
   private void print( CallbackContext callbackContext, String bill) {
+    map.clear();
     n900Device=N900Device.getInstance(this.cordova);
     Print print = new Print();
     print.n900Device  = n900Device;
@@ -320,6 +369,73 @@ public class nlpos extends CordovaPlugin {
       }else{
         callbackContext.success((new JSONObject(map0)).toString());
       }
+    }
+  }
+
+  private void loadkey( CallbackContext callbackContext, String params ) {
+    try {
+      if (null != params && !"".equals(params)) {
+        JSONObject paramsObject = new JSONObject(params);
+        String storepath = Environment.getExternalStorageDirectory() + paramsObject.getString("storepath");
+        String password = paramsObject.getString("password");
+//        EncryUtils encryUtils = new EncryUtils();
+//        Map rtnmap = encryUtils.loadFromKeystoe(storepath, password);
+//        Log.d(LOG_TAG, rtnmap.toString());
+//        callbackContext.success((new JSONObject(rtnmap)).toString());
+      } else {
+        map.put("status", FAILED);
+        map.put("msg", "参数不能为空");
+        callbackContext.success((new JSONObject(map)).toString());
+      }
+    }catch (JSONException e ) {
+      showMsg += "JSON参数传递错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
+    }
+  }
+
+  private void loadrule( CallbackContext callbackContext, String params ) {
+    map.clear();
+    try {
+      if (null != params && !"".equals(params)) {
+        JSONObject paramsObject = new JSONObject(params);
+        String storepath = paramsObject.getString("storepath"); //Environment.getExternalStorageDirectory() +
+
+        String rulepath = paramsObject.getString("rulepath");
+        String alias = paramsObject.getString("alias");
+        String storepass = paramsObject.getString("storepass");
+        String keypass = paramsObject.getString("keypass");
+        RSAUtils rsaUtils = new RSAUtils();
+        Context context = this.cordova.getActivity();
+        String rtnStr = rsaUtils.decryptFileAndroid(context, alias, keypass, storepass, "BKS",storepath, rulepath, 256 );
+        if( null== rtnStr){
+          Log.d(LOG_TAG, "读取远程卡标准失败，请检查网络连接或文件是否存在" );
+          map.put("status", FAILED);
+          map.put("msg", "读取远程卡标准失败，请检查网络连接或文件是否存在");
+          callbackContext.success((new JSONObject(map)).toString());
+        }else{
+          rtnStr = rtnStr.replaceAll("\r", "").replaceAll("\n","").replaceAll("\t","").replaceAll("\\s","").replaceAll("　","").replaceAll(" ","");
+          Constant.cardrule = new JSONArray( rtnStr );
+          Log.d(LOG_TAG, rtnStr );
+          map.put("status", SUCCESS);
+          map.put("msg", "解密并载入卡标准成功");
+          // map.put("data", rtnStr);
+          callbackContext.success((new JSONObject(map)).toString());
+        }
+
+      } else {
+        map.put("status", FAILED);
+        map.put("msg", "json参数不能为空");
+        callbackContext.success((new JSONObject(map)).toString());
+      }
+    }catch (JSONException e ) {
+      showMsg += "JSON参数传递错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
     }
   }
 
@@ -391,10 +507,79 @@ public class nlpos extends CordovaPlugin {
     }
 
   };
+
+  public Map getReadBlocks( JSONArray ruleids ) throws Exception {
+    List readBlodks = new ArrayList();
+    Map rtnMap = new HashMap();
+    if( null == Constant.cardrule ){
+      showMsg = "卡标准为空或没有预读取，不能读卡";
+      Log.d(LOG_TAG, showMsg );
+      rtnMap.put("status", FAILED);
+      rtnMap.put("msg", showMsg);
+      return rtnMap; //无卡标准，无法读卡
+    }else if(  null==ruleids || ruleids.length()<=0 ){//所有标准全部读取
+      for (int i=0; i<  Constant.cardrule.length(); i++){
+        JSONObject jsonObject =  Constant.cardrule.getJSONObject(i);
+        int startSection = jsonObject.getInt( "section");
+        int sectionNum = jsonObject.getInt("num");
+        for( int j=startSection; j<startSection + sectionNum; j++ ){
+          for( int m = j * 4; m< j*4 +3; m++){
+            Map blockMap = new HashMap();
+            blockMap.put("block", m );
+            blockMap.put("key", jsonObject.getString("key"));
+            readBlodks.add( blockMap );
+          }
+        }
+      }
+    }else if(  null!=ruleids && ruleids.length()>0 ){//指定了读取标准，读取和标准的交集，否则无法读
+      for(int n=0; n<ruleids.length(); n++) {
+        for (int i = 0; i < Constant.cardrule.length(); i++) {
+          JSONObject jsonObject = Constant.cardrule.getJSONObject(i);
+          if( ruleids.getJSONObject(n).getString("ruleid").equals( jsonObject.getString("ruleid"))) {
+            int startSection = jsonObject.getInt("section");
+            int sectionNum = jsonObject.getInt("num");
+            for (int j = startSection; j < startSection + sectionNum; j++) {
+              for (int m = j * 4; m < j * 4 + 3; m++) {
+                Map blockMap = new HashMap();
+                blockMap.put("block", m + "");
+                blockMap.put("key", jsonObject.getString("key"));
+                readBlodks.add( blockMap );
+              }
+            }
+          }
+        }
+      }
+
+    }
+    if( null==readBlodks || readBlodks.isEmpty()){
+      showMsg = "卡标准中没有找到指定的标准，无法读卡";
+      Log.d(LOG_TAG, showMsg );
+      rtnMap.put("status", FAILED);
+      rtnMap.put("msg", showMsg);
+    }
+    showMsg = "从卡标准中找到了要读的块信息";
+    Log.d(LOG_TAG, showMsg );
+    rtnMap.put("status", SUCCESS);
+    rtnMap.put("msg", showMsg);
+    rtnMap.put("data", new JSONArray(readBlodks));
+    Log.d(LOG_TAG, readBlodks.toString() );
+    return  rtnMap;
+  }
+
   public CallbackContext getPosCallbackContext() {
     return posCallbackContext;
   }
 
+  private Map readRfCard( RFCardRead rfCardRead, int block, String key ){
+    Map map0 = new HashMap();
+    Map map3 =  rfCardRead.authenticateByExtendKey( block, key );
+    if( map3.get("status").equals(SUCCESS)){
+      map0 = rfCardRead.readBlock( block );
+    }else{
+      map0 = map3;
+    }
+    return map0;
+  }
   /**
    * Create a new plugin result and send it back to JavaScript
    *

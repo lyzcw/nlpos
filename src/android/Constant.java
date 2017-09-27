@@ -3,17 +3,21 @@ package com.openunion.cordova.plugins.nlpos;
 import com.newland.mtype.module.common.rfcard.RFKeyMode;
 import com.newland.mtype.util.ISOUtils;
 
+import org.json.JSONArray;
+
 /**
  * Created by lyzcw on 2017/9/6.
  */
 
 public class Constant {
-  //外部秘钥
-  public static final byte[] key = ISOUtils.hex2byte("ffffffffffff");
-  //认证的块号
+  //载入的卡标准json
+  public static JSONArray cardrule = null;
+  //默认外部秘钥
+  public static final String key = "ffffffffffff";
+  //默认的块号
   public static final int block = 2;
-  //SNR序列号
-  public static final byte[] snr = ISOUtils.hex2byte("8B7A84EF");
+  //默认SNR序列号
+  public static final String snr = "8B7A84EF";
   //key模式
   public static final RFKeyMode qpKeyMode = RFKeyMode.KEYA_0X60;
   //异步消息

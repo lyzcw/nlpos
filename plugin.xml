@@ -51,5 +51,7 @@
 		<source-file src="src/android/ScanViewActivity.java" target-dir="src/com/openunion/cordova/plugins/nlpos"/>
 		<source-file src="src/android/ViewfinderView.java" target-dir="src/com/openunion/cordova/plugins/nlpos"/>
 		<source-file src="src/android/SoundPoolImpl.java" target-dir="src/com/openunion/cordova/plugins/nlpos"/>
+		<source-file src="src/android/RSAUtils.java" target-dir="src/com/openunion/cordova/plugins/nlpos"/>
+		<source-file src="src/android/Base64Utils.java" target-dir="src/com/openunion/cordova/plugins/nlpos"/>
 	</platform>
 </plugin>

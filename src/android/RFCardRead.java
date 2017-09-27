@@ -25,7 +25,7 @@ public class RFCardRead {
   private final static String LOG_TAG = "openunion.nlpos";
   private static final String SUCCESS = "success";
   private static final String FAILED = "failed";
-  private String snr;
+  private String snrStr;
   private String showMsg = "";
   private  Map map = new HashMap();
   /**
@@ -61,8 +61,8 @@ public class RFCardRead {
               showMsg = "非接卡序列号:" + ISOUtils.hexString(qPResult.getCardSerialNo()) + "\r\n";
             }
             LOG.d(LOG_TAG, showMsg);
-            snr = ISOUtils.hexString(qPResult.getCardSerialNo());
-            LOG.d(LOG_TAG, "非接卡序列号：" + snr );
+            snrStr = ISOUtils.hexString(qPResult.getCardSerialNo());
+            LOG.d(LOG_TAG, "非接卡序列号：" + snrStr );
             if (qPResult.getATQA() == null) {
               showMsg = "非接卡ATQA:null" + "\r\n";
             } else {
@@ -93,12 +93,12 @@ public class RFCardRead {
   /**
    * 外认.
    */
-  public Map authenticateByExtendKey(){
+  public Map authenticateByExtendKey(int block, String keyStr){
     try {
       RFKeyMode qpKeyMode = Constant.qpKeyMode;
-      int block = Constant.block;
-      byte snr[] = Constant.snr;
-      byte key[] = Constant.key;
+      //int block = Constant.block;
+      byte snr[] = ISOUtils.hex2byte( snrStr );
+      byte key[] = ISOUtils.hex2byte( keyStr );
 
       showMsg = "KEY模式:" + qpKeyMode + "\r\n";
       LOG.d(LOG_TAG, showMsg);
@@ -131,10 +131,8 @@ public class RFCardRead {
   /**
    * 读块.
    */
-  public Map readBlock() {
+  public Map readBlock( int block ) {
     try {
-      int block = Constant.block;
-
       byte output[] = rfCardModule.readDataBlock(block);
       showMsg = "存储块:" + block;
 

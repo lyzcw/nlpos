@@ -46,8 +46,8 @@ NLPos.onScanCode = function() {
   exec(nlpos._status, nlpos._error,"nlpos", "scan", []);
 };
 
-NLPos.prototype.openCardReader = function(readTimeout, success, error) {
-  return exec(nlpos._status, error, 'nlpos', 'openCardReader', [readTimeout]);
+NLPos.prototype.openCardReader = function(params, success, error) {
+  return exec(nlpos._status, error, 'nlpos', 'openCardReader', [params]);
 };
 
 NLPos.prototype.closeCardReader = function(success, error) {
@@ -88,6 +88,14 @@ NLPos.prototype._status = function ( info ) {
  */
 NLPos.prototype._error = function(e) {
     console.log("Error initializing NLPos: " + e);
+};
+
+NLPos.prototype.loadkey = function(params, success, error) {
+  return exec(success, error,'nlpos', 'loadkey', [params]);
+};
+
+NLPos.prototype.loadrule = function(params, success, error) {
+  return exec(success, error,'nlpos', 'loadrule', [params]);
 };
 
 var nlpos = new NLPos(); // jshint ignore:line
