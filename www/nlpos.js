@@ -98,6 +98,10 @@ NLPos.prototype.loadrule = function(params, success, error) {
   return exec(success, error,'nlpos', 'loadrule', [params]);
 };
 
+NLPos.prototype.getDeviceInfo = function( success, error) {
+  return exec(success, error,'nlpos', 'getDeviceInfo', []);
+};
+
 var nlpos = new NLPos(); // jshint ignore:line
 
 module.exports = nlpos;

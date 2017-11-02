@@ -9,6 +9,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.newland.mtype.DeviceInfo;
 import com.newland.mtype.ModuleType;
 import com.newland.mtype.ProcessTimeoutException;
 import com.newland.mtype.event.DeviceEventListener;
@@ -81,6 +82,9 @@ public class nlpos extends CordovaPlugin {
     }else if (action.equals("loadrule")) {
       String params = (String) args.get(0);
       this.loadrule( callbackContext, params );
+      return true;
+    }else if (action.equals("getDeviceInfo")) {
+      this.getDeviceInfo( callbackContext);
       return true;
     }
     return false;
@@ -280,8 +284,8 @@ public class nlpos extends CordovaPlugin {
     Map map = new HashMap();
     // new Thread(new Runnable() {
 
-    // 	@Override
-    // 	public void run() {
+    //  @Override
+    //  public void run() {
     try {
       cardReader.cancelCardRead();
       showMsg = "撤销读卡操作：成功";
@@ -292,7 +296,7 @@ public class nlpos extends CordovaPlugin {
       map.put("status", FAILED);
       map.put("msg", showMsg );
     }
-    // 	}
+    //  }
     // }).start();
     callbackContext.success( (new JSONObject(map)).toString() );
   }
@@ -316,8 +320,8 @@ public class nlpos extends CordovaPlugin {
     Map map = new HashMap();
     //  new Thread(new Runnable() {
 
-    //	@Override
-    //	public void run() {
+    //  @Override
+    //  public void run() {
     try {
       cardReader.closeCardReader();
       showMsg = "关闭读卡器：成功";
@@ -328,7 +332,7 @@ public class nlpos extends CordovaPlugin {
       map.put("status", FAILED);
       map.put("msg", showMsg );
     }
-    //	}
+    //  }
     //}).start();
     callbackContext.success( (new JSONObject(map)).toString() );
 
@@ -369,6 +373,23 @@ public class nlpos extends CordovaPlugin {
       }else{
         callbackContext.success((new JSONObject(map0)).toString());
       }
+    }
+  }
+
+  private void getDeviceInfo( CallbackContext callbackContext ) {
+    map.clear();
+    n900Device=N900Device.getInstance(this.cordova);
+
+    if (!n900Device.isDeviceAlive()) {
+      map = n900Device.connectDevice();
+    }
+    if( n900Device.isDeviceAlive()) {
+      Map map0 = new HashMap();
+      map0.put("status", SUCCESS);
+      DeviceInfo deviceInfo = n900Device.getDevice().getDeviceInfo();
+      map0.put("msg", deviceInfo.toString() );
+      callbackContext.success((new JSONObject(map0)).toString());
+
     }
   }
 
@@ -480,9 +501,9 @@ public class nlpos extends CordovaPlugin {
           Log.d(LOG_TAG, (new JSONObject(map0)).toString() );
           Constant.asynMsg = (new JSONObject(map0)).toString();
           sendUpdate( new JSONObject(map0), true );
-//				if (scanner != null) {
-//					scanner.stopScan();
-//				}
+//        if (scanner != null) {
+//          scanner.stopScan();
+//        }
           break;
         }
         case Const.ScanResult.SCAN_ERROR: {
