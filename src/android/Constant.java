@@ -10,6 +10,24 @@ import org.json.JSONArray;
  */
 
 public class Constant {
+  //默认AES加密初始向量
+  public static final String iv = "OpenUnionInitvec";
+  //默认服务端keystore路径
+  public static final String serverstorepath = "postrustks.bks";
+  //默认服务端证书alias
+  public static final String serverstorealias = "OpenUnionPosServer";
+  //默认客户端keystore路径
+  public static final String storepath = "posks.bks";
+  //默认服务端keystore密码
+  public static final String storepass = "OU@POS";
+  //默认服务端keystore秘钥密码
+  public static final String keypass = "POS@OU";
+  //默认客户端证书subjectDN
+  public static final String subjectDN = ",ou=OpenUnion Certificate Authority,o=OpenUnion Inc,c=cn";
+  //默认客户端证书issuerDN
+  public static final String issuerDN = "ou=OpenUnion Certificate Authority,o=OpenUnion Inc,c=cn";
+  //默认证书有效期
+  public static final int validity = 3650;
   //载入的卡标准json
   public static JSONArray cardrule = null;
   //默认外部秘钥

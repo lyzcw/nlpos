@@ -86,6 +86,25 @@ public class nlpos extends CordovaPlugin {
     }else if (action.equals("getDeviceInfo")) {
       this.getDeviceInfo( callbackContext);
       return true;
+    }else if (action.equals("initDevice")) {
+      this.initDevice( callbackContext);
+      return true;
+    }else if (action.equals("encrypt")) {
+      String params = (String) args.get(0);
+      this.encrypt( callbackContext, params );
+      return true;
+    }else if (action.equals("decrypt")) {
+      String params = (String) args.get(0);
+      this.decrypt( callbackContext, params );
+      return true;
+    }else if (action.equals("writeKeyStore")) {
+      String params = (String) args.get(0);
+      this.writeKeyStore( callbackContext, params );
+      return true;
+    }else if (action.equals("writeTrustStore")) {
+      String params = (String) args.get(0);
+      this.writeTrustStore( callbackContext, params );
+      return true;
     }
     return false;
   }
@@ -385,9 +404,57 @@ public class nlpos extends CordovaPlugin {
     }
     if( n900Device.isDeviceAlive()) {
       Map map0 = new HashMap();
+      Map map1 = new HashMap();
       map0.put("status", SUCCESS);
       DeviceInfo deviceInfo = n900Device.getDevice().getDeviceInfo();
-      map0.put("msg", deviceInfo.toString() );
+      map1.put("sn",deviceInfo.getSN() );
+      map1.put("appVer",deviceInfo.getAppVer() );
+      map1.put("udid",deviceInfo.getUdid() );
+      map1.put("csn",deviceInfo.getCSNData() );
+      map1.put("ksn",deviceInfo.getKSNData());
+      map1.put("pid",deviceInfo.getPIDNums() );
+      map1.put("vid",deviceInfo.getVID() );
+      map1.put("customSN",deviceInfo.getCustomSN() );
+      map1.put("firmwareVer",deviceInfo.getFirmwareVer() );
+      map1.put("isFactoryModel",deviceInfo.isFactoryModel() );
+      map1.put("isMainkeyLoaded",deviceInfo.isMainkeyLoaded() );
+      map1.put("isWorkingkeyLoaded",deviceInfo.isWorkingkeyLoaded() );
+      map1.put("isDUKPTkeyLoadedfalse",deviceInfo.isDUKPTkeyLoaded() );
+      map1.put("isSupportAudio",deviceInfo.isSupportAudio() );
+      map1.put("isSupportBlueTooth",deviceInfo.isSupportBlueTooth());
+      map1.put("isSupportUSB",deviceInfo.isSupportUSB());
+      map1.put("isSupportMagCard",deviceInfo.isSupportMagCard() );
+      map1.put("isSupportICCard",deviceInfo.isSupportICCard());
+      map1.put("isSupportQuickPass",deviceInfo.isSupportQuickPass());
+      map1.put("isSupportPrint",deviceInfo.isSupportPrint());
+      map1.put("isSupportLCD",deviceInfo.isSupportLCD() );
+      map1.put("isSupportOffLine",deviceInfo.isSupportOffLine() );
+
+      Log.d(LOG_TAG, new JSONObject(map1).toString() );
+      map0.put("msg", "获取设备信息成功");
+      map0.put("data", map1);
+      callbackContext.success((new JSONObject(map0)).toString());
+
+    }
+  }
+
+  private void initDevice( CallbackContext callbackContext ) {
+    map.clear();
+    n900Device=N900Device.getInstance(this.cordova);
+
+    if (!n900Device.isDeviceAlive()) {
+      map = n900Device.connectDevice();
+    }
+    if( n900Device.isDeviceAlive()) {
+      Map map0 = new HashMap();
+      Map map1 = new HashMap();
+      map0.put("status", SUCCESS);
+      DeviceInfo deviceInfo = n900Device.getDevice().getDeviceInfo();
+      map1.put("sn",deviceInfo.getSN() );
+
+      Log.d(LOG_TAG, new JSONObject(map1).toString() );
+      map0.put("msg", "初始化设备信息成功");
+      map0.put("data", map1);
       callbackContext.success((new JSONObject(map0)).toString());
 
     }
@@ -409,9 +476,157 @@ public class nlpos extends CordovaPlugin {
         callbackContext.success((new JSONObject(map)).toString());
       }
     }catch (JSONException e ) {
-      showMsg += "JSON参数传递错误" + e.getMessage();
+      showMsg += "JSON参数错误" + e.getMessage();
       map.put("status", FAILED);
       map.put("msg", showMsg);
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
+    }
+  }
+
+  private void encrypt( CallbackContext callbackContext, String params ) {
+    try {
+      if (null != params && !"".equals(params)) {
+        JSONObject paramsObject = new JSONObject(params);
+        String key = paramsObject.getString("key");
+        String content = paramsObject.getString("content");
+
+        String rtnStr = AESUtils.encrypt( content, key, Constant.iv);
+        //String deStr = AESUtils.decrypt( rtnStr, key, Constant.iv);
+        Log.d(LOG_TAG, rtnStr );
+        map.put("status", SUCCESS);
+        map.put("msg", "加密成功");
+        map.put("data", rtnStr);
+        //map.put("clear", deStr);
+        callbackContext.success((new JSONObject(map)).toString());
+
+      } else {
+        map.put("status", FAILED);
+        map.put("msg", "参数不能为空");
+        map.put("data", "");
+        callbackContext.success((new JSONObject(map)).toString());
+      }
+    }catch (JSONException e ) {
+      showMsg += "JSON参数错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
+      map.put("data", "");
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
+    }catch ( Exception e ) {
+      showMsg += "加密参数错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
+      map.put("data", "");
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
+    }
+  }
+
+  private void decrypt( CallbackContext callbackContext, String params ) {
+    try {
+      if (null != params && !"".equals(params)) {
+        JSONObject paramsObject = new JSONObject(params);
+        String key = paramsObject.getString("key");
+        String content = paramsObject.getString("content");
+
+        String rtnStr = AESUtils.decrypt( content, key, Constant.iv);
+        //String deStr = AESUtils.decrypt( rtnStr, key, Constant.iv);
+        Log.d(LOG_TAG, rtnStr );
+        map.put("status", SUCCESS);
+        map.put("msg", "解密成功");
+        map.put("data", rtnStr);
+        //map.put("clear", deStr);
+        callbackContext.success((new JSONObject(map)).toString());
+
+      } else {
+        map.put("status", FAILED);
+        map.put("msg", "参数不能为空");
+        map.put("data", "");
+        callbackContext.success((new JSONObject(map)).toString());
+      }
+    }catch (JSONException e ) {
+      showMsg += "JSON参数错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
+      map.put("data", "");
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
+    }catch ( Exception e ) {
+      showMsg += "解密参数错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
+      map.put("data", "");
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
+    }
+  }
+
+  private void writeKeyStore( CallbackContext callbackContext, String params ) {
+    try {
+      if (null != params && !"".equals(params)) {
+        JSONObject paramsObject = new JSONObject(params);
+        String pubKeyStr = paramsObject.getString("pubKeyStr");
+        String privKeyStr = paramsObject.getString("privKeyStr");
+        String posAlias = paramsObject.getString("posAlias");
+        Context context = this.cordova.getActivity();
+        if (RSAUtils.writeKeyStore(context, posAlias, Base64Utils.decode(pubKeyStr), Base64Utils.decode(privKeyStr), Constant.storepath, Constant.storepass, Constant.keypass, Constant.issuerDN, Constant.issuerDN, Constant.validity)){
+          map.put("status", SUCCESS);
+          map.put("msg", "将密钥对写入keystore成功");
+          map.put("data", "");
+          //map.put("clear", deStr);
+          callbackContext.success((new JSONObject(map)).toString());
+        } else {
+          map.put("status", FAILED);
+          map.put("msg", "将密钥对写入keystore失败");
+          map.put("data", "");
+          callbackContext.success((new JSONObject(map)).toString());
+        }
+      } else {
+        map.put("status", FAILED);
+        map.put("msg", "参数不能为空");
+        map.put("data", "");
+        callbackContext.success((new JSONObject(map)).toString());
+      }
+    }catch (JSONException e ) {
+      showMsg += "JSON参数错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
+      map.put("data", "");
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
+    }
+  }
+
+  private void writeTrustStore( CallbackContext callbackContext, String params ) {
+    try {
+      if (null != params && !"".equals(params)) {
+        JSONObject paramsObject = new JSONObject(params);
+        String certStr = paramsObject.getString("certStr");
+        Context context = this.cordova.getActivity();
+        if (RSAUtils.writeKeyStore(context, Constant.serverstorealias, certStr, Constant.serverstorepath, Constant.keypass)){
+          map.put("status", SUCCESS);
+          map.put("msg", "将公钥证书写入keystore成功");
+          map.put("data", "");
+          //map.put("clear", deStr);
+          callbackContext.success((new JSONObject(map)).toString());
+        } else {
+          map.put("status", FAILED);
+          map.put("msg", "将公钥证书写入keystore失败");
+          map.put("data", "");
+          callbackContext.success((new JSONObject(map)).toString());
+        }
+      } else {
+        map.put("status", FAILED);
+        map.put("msg", "参数不能为空");
+        map.put("data", "");
+        callbackContext.success((new JSONObject(map)).toString());
+      }
+    }catch (JSONException e ) {
+      showMsg += "JSON参数错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
+      map.put("data", "");
       LOG.d(LOG_TAG, showMsg);
       callbackContext.success((new JSONObject(map)).toString());
     }
@@ -442,7 +657,7 @@ public class nlpos extends CordovaPlugin {
           Log.d(LOG_TAG, rtnStr );
           map.put("status", SUCCESS);
           map.put("msg", "解密并载入卡标准成功");
-          // map.put("data", rtnStr);
+          map.put("data", rtnStr);
           callbackContext.success((new JSONObject(map)).toString());
         }
 

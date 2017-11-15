@@ -19,6 +19,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.security.KeyFactory;
@@ -29,6 +30,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.X509Certificate;
+import java.security.cert.CertificateException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
@@ -40,6 +42,7 @@ import java.security.KeyStoreException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.Certificate;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.BadPaddingException;
@@ -50,11 +53,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Calendar;
 
 import javax.crypto.Cipher;
 
-import org.bouncycastle.x509.X509V3CertificateGenerator;
-import org.bouncycastle.jce.X509Principal;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.operator.ContentSigner;
 
 /**
  * 需要注意的就是加密是有长度限制的，过长的话会抛异常！！！需要做分段加解密
@@ -87,7 +94,45 @@ public final class RSAUtils {
 //    export.exportedFile=new File(args[4]);
 //    export.export();
   }
+  /**
+   * 随机生成android客户端RSA密钥对，并导入服务端keystore(默认密钥长度为2048)
+   * @param alias 证书别名，服务端keystore中要唯一
+   * @param storePath 服务端keystore路径
+   * @param storePass 服务端keystore密码
+   * @param keyPass 新生成私钥保护密码
+   * @param subjectDN 公钥证书主体名
+   * @param issuerDN 公钥证书签发者
+   * @param validity 证书有效期（天数）
+   *
+   * @return
+   */
+  public static boolean genKeypairToKeyStore(String alias, String storePath, String storePass, String keyPass, String subjectDN, String issuerDN, int validity )
+  {
+    KeyPair pair = generateRSAKeyPair(2048);
+    PrivateKey priv = pair.getPrivate();
+    PublicKey pub = pair.getPublic();
+    try {
+      KeyStore ks = KeyStore.getInstance("BKS");
 
+      X509Certificate certificate = generateCertificate( pair, subjectDN, issuerDN, validity);
+      Certificate[] certChain = new Certificate[1];
+      certChain[0] = certificate;
+
+      File storeFile = new File(storePath);
+      if(storeFile.exists() ){
+        ks.load(new FileInputStream(storePath), storePass.toCharArray());
+        ks.setKeyEntry(alias, priv, keyPass.toCharArray(), certChain );
+      }
+      FileOutputStream writeStream = new FileOutputStream( storePath );
+      ks.store(writeStream, storePass.toCharArray());
+      writeStream.close();
+
+    } catch (Exception e) {
+      System.out.println("生成密钥对并写入keystore失败:"+e.getMessage());
+      return false;
+    }
+    return true;
+  }
   /**
    * 随机生成android客户端RSA密钥对和keystore，并导入服务端keystore(默认密钥长度为2048)
    * @param alias 证书别名，服务端keystore中要唯一
@@ -122,12 +167,9 @@ public final class RSAUtils {
 
       File serverStoreFile = new File(serverStorePath);
       if(serverStoreFile.exists() ){
-        try {
-          serverKs.load(new FileInputStream(serverStorePath), serverStorePass.toCharArray());
-          serverKs.setKeyEntry(alias, priv, keyPass.toCharArray(), certChain );
-        }catch (Exception e){
-          serverKs = clientKs;
-        }
+        serverKs.load(new FileInputStream(serverStorePath), serverStorePass.toCharArray());
+        serverKs.setKeyEntry(alias, priv, keyPass.toCharArray(), certChain );
+
       }else{
         serverKs = clientKs;
       }
@@ -136,11 +178,209 @@ public final class RSAUtils {
       writeStream1.close();
 
     } catch (Exception e) {
+      System.out.println("产生秘钥对并写入keystore失败:"+e.getMessage());
+      return false;
+    }
+    return true;
+  }
+  /**
+   * 将android客户端RSA密钥对字符串，并导入客户端端keystore(默认密钥长度为2048)
+   * @param alias 证书别名，服务端keystore中要唯一
+   * @param pubKey 公钥字符串
+   * @param privKey 私钥字符串
+   * @param keyStorePath keystore路径
+   * @param keyStorePass keystore密码
+   * @param keyPass 新生成私钥保护密码
+   * @param subjectDN 公钥证书主体名
+   * @param issuerDN 公钥证书签发者
+   * @param validity 证书有效期（天数）
+   *
+   * @return
+   */
+  public boolean writeKeyStore( String alias, byte[] pubKey, byte[] privKey, String keyStorePath, String keyStorePass,  String keyPass, String subjectDN, String issuerDN, int validity )
+  {
+    try {
+      PrivateKey priv = getPrivateKey( privKey);
+      PublicKey pub = getPublicKey( pubKey );
+      KeyPair pair = new KeyPair( pub, priv);
+      KeyStore clientKs = KeyStore.getInstance("BKS");
+
+      X509Certificate certificate = generateCertificate( pair, subjectDN, issuerDN, validity);
+      Certificate[] certChain = new Certificate[1];
+      certChain[0] = certificate;
+
+      //keyStorePath = context.getDir("ks", context.MODE_PRIVATE ).getAbsolutePath() + "/" + keyStorePath;
+      File keyStoreFile = new File( keyStorePath );
+      if(keyStoreFile.exists() ){
+        clientKs.load(new FileInputStream(keyStorePath), keyStorePass.toCharArray());
+      }else{
+        clientKs.load(null, keyStorePass.toCharArray());
+      }
+      clientKs.setKeyEntry(alias, priv, keyPass.toCharArray(), certChain );
+      FileOutputStream writeStream = new FileOutputStream( keyStorePath );
+      clientKs.store(writeStream, keyStorePass.toCharArray());
+      writeStream.close();
+
+    } catch (Exception e) {
+      System.out.println("写入keystore失败:"+e.getMessage());
       return false;
     }
     return true;
   }
 
+  /**
+   * 将android客户端RSA密钥对字符串，并导入客户端端keystore(默认密钥长度为2048)
+   * @param alias 证书别名，服务端keystore中要唯一
+   * @param pubKey 公钥字符串
+   * @param privKey 私钥字符串
+   * @param keyStorePath keystore路径
+   * @param keyStorePass keystore密码
+   * @param keyPass 新生成私钥保护密码
+   * @param subjectDN 公钥证书主体名
+   * @param issuerDN 公钥证书签发者
+   * @param validity 证书有效期（天数）
+   *
+   * @return
+   */
+  public static boolean writeKeyStore(Context context, String alias, byte[] pubKey, byte[] privKey, String keyStorePath, String keyStorePass,  String keyPass, String subjectDN, String issuerDN, int validity )
+  {
+    try {
+      PrivateKey priv = getPrivateKey( privKey);
+      PublicKey pub = getPublicKey( pubKey );
+      KeyPair pair = new KeyPair( pub, priv);
+      KeyStore clientKs = KeyStore.getInstance("BKS");
+
+      X509Certificate certificate = generateCertificate( pair, subjectDN, issuerDN, validity);
+      Certificate[] certChain = new Certificate[1];
+      certChain[0] = certificate;
+
+      keyStorePath = context.getDir("ks", context.MODE_PRIVATE ).getAbsolutePath() + "/" + keyStorePath;
+      File keyStoreFile = new File( keyStorePath );
+      if(keyStoreFile.exists() ){
+        clientKs.load(new FileInputStream(keyStorePath), keyStorePass.toCharArray());
+      }else{
+        clientKs.load(null, keyStorePass.toCharArray());
+      }
+      clientKs.setKeyEntry(alias, priv, keyPass.toCharArray(), certChain );
+      FileOutputStream writeStream = new FileOutputStream( keyStorePath );
+      clientKs.store(writeStream, keyStorePass.toCharArray());
+      writeStream.close();
+    } catch (Exception e) {
+      System.out.println("写入keystore失败:"+e.getMessage());
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * 将android客户端公钥证书字符串，并导入客户端信任keystore
+   * @param alias 证书别名，服务端keystore中要唯一
+   * @param certStr 公钥证书字符串
+   * @param keyStorePath keystore路径
+   * @param keyStorePass keystore密码
+  *
+   * @return
+   */
+  public static boolean writeKeyStore(Context context, String alias, String certStr, String keyStorePath, String keyStorePass )
+  {
+    try {
+      byte[] byteCert = Base64Utils.decode( certStr );
+      //转换成二进制流
+      ByteArrayInputStream bain = new ByteArrayInputStream(byteCert);
+      CertificateFactory cf = CertificateFactory.getInstance("X.509");
+      X509Certificate oCert = (X509Certificate)cf.generateCertificate(bain);
+      String info = oCert.getSubjectDN().getName();
+      System.out.println("字符串证书拥有者:"+info);
+      keyStorePath = context.getDir("ks", context.MODE_PRIVATE ).getAbsolutePath() + "/" + keyStorePath;
+      File keyStoreFile = new File( keyStorePath );
+      KeyStore ks = KeyStore.getInstance("BKS");
+      if(keyStoreFile.exists() ){
+        ks.load(new FileInputStream(keyStorePath), keyStorePass.toCharArray());
+        ks.setCertificateEntry(alias,  oCert);
+      }else{
+        ks.load(null, keyStorePass.toCharArray());
+        ks.setCertificateEntry(alias,  oCert);
+      }
+      FileOutputStream writeStream = new FileOutputStream( keyStorePath );
+      ks.store(writeStream, keyStorePass.toCharArray());
+      writeStream.close();
+
+    } catch (Exception e) {
+      System.out.println("导入客户端信任keystore失败:"+e.getMessage());
+      return false;
+    }
+    return true;
+  }
+  /**
+   * 将公钥证书字符串，并导入客户端信任keystore
+   * @param alias 证书别名，服务端keystore中要唯一
+   * @param certStr 公钥证书字符串
+   * @param keyStorePath keystore路径
+   * @param keyStorePass keystore密码
+   *
+   * @return
+   */
+  public static boolean writeKeyStore( String alias, String certStr, String keyStorePath, String keyStorePass )
+  {
+    try {
+      byte[] byteCert = Base64Utils.decode( certStr );
+      //转换成二进制流
+      ByteArrayInputStream bain = new ByteArrayInputStream(byteCert);
+      CertificateFactory cf = CertificateFactory.getInstance("X.509");
+      X509Certificate oCert = (X509Certificate)cf.generateCertificate(bain);
+      String info = oCert.getSubjectDN().getName();
+      System.out.println("字符串证书拥有者:"+info);
+      File keyStoreFile = new File( keyStorePath );
+      KeyStore ks = KeyStore.getInstance("BKS");
+      if(keyStoreFile.exists() ){
+        ks.load(new FileInputStream(keyStorePath), keyStorePass.toCharArray());
+        ks.setCertificateEntry(alias,  oCert);
+      }else{
+        ks.load(null, keyStorePass.toCharArray());
+        ks.setCertificateEntry(alias,  oCert);
+      }
+      FileOutputStream writeStream = new FileOutputStream( keyStorePath );
+      ks.store(writeStream, keyStorePass.toCharArray());
+      writeStream.close();
+
+    } catch (Exception e) {
+      System.out.println("导入信任证书到keystore失败:"+e.getMessage());
+      return false;
+    }
+    return true;
+  }
+  // 导出证书 base64格式文件
+  public static void exportCert(KeyStore keystore, String alias, String exportFile) throws Exception {
+    Certificate cert = keystore.getCertificate(alias);
+    String encoded = Base64Utils.encode(cert.getEncoded());
+    FileWriter fw = new FileWriter(exportFile);
+    fw.write("-----BEGIN CERTIFICATE-----\r\n");    //非必须
+    fw.write(encoded);
+    fw.write("\r\n-----END CERTIFICATE-----");  //非必须
+    fw.close();
+  }
+
+  //导出证书 base64格式字符串
+  public static String exportCert(String storePath, String storePass,  String alias) {
+    KeyStore keystore;
+    try {
+      keystore = KeyStore.getInstance("BKS");
+      File storeFile = new File(storePath);
+      if(storeFile.exists() ){
+        keystore.load(new FileInputStream(storePath), storePass.toCharArray());
+        Certificate cert = keystore.getCertificate(alias);
+        return Base64Utils.encode(cert.getEncoded());
+      }else {
+        return null;
+      }
+    } catch ( Exception e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+      System.out.println("导出证书 base64格式字符串失败:"+e.getMessage());
+      return null;
+    }
+
+  }
   /**
    * 列出秘钥所有条目
    * @param storePath 秘钥库路径
@@ -311,19 +551,21 @@ public final class RSAUtils {
    * @return 证书
    */
   public static X509Certificate generateCertificate( KeyPair keyPair, String subjectDN, String issuerDN, int validity) throws Exception {
-    X509V3CertificateGenerator cert = new X509V3CertificateGenerator();
+    Date startDate=new Date();
+    Calendar cal = Calendar.getInstance();
+    cal.setTime(startDate);
+    cal.add(Calendar.DATE, validity);
+    Date expiryDate = cal.getTime();
+    BigInteger  serialNumber= BigInteger.valueOf(startDate.getTime()/1000); //以当前时间为序列号
+    X509v3CertificateBuilder certBuilder = new X509v3CertificateBuilder( new X500Name( issuerDN), serialNumber, startDate, expiryDate, new X500Name(subjectDN), SubjectPublicKeyInfo.getInstance(keyPair.getPublic().getEncoded()));
+    JcaContentSignerBuilder builder = new JcaContentSignerBuilder("SHA256withRSA");
+    ContentSigner signer = builder.build(keyPair.getPrivate());
 
-    Date currentTime=new Date();
-    int sn=(int)(currentTime.getTime()/1000); //以当前时间为序列号
-    cert.setSerialNumber(BigInteger.valueOf(sn));   //or generate a random number
-    cert.setSubjectDN(new X509Principal("CN=" + subjectDN ));  //see examples to add O,OU etc
-    cert.setIssuerDN(new X509Principal("CN=" + issuerDN)); //same since it is self-signed
-    cert.setPublicKey(keyPair.getPublic());
-    cert.setNotBefore( currentTime);
-    cert.setNotAfter(new Date(currentTime.getTime() + validity*24*60*60*1000L));
-    cert.setSignatureAlgorithm("SHA1WithRSAEncryption");
-    PrivateKey signingKey = keyPair.getPrivate();
-    return cert.generate(signingKey, "BC");
+    byte[] certBytes = certBuilder.build(signer).getEncoded();
+    CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
+    X509Certificate certificate = (X509Certificate)certificateFactory.generateCertificate(new ByteArrayInputStream(certBytes));
+
+    return certificate;
   }
 
   /**
@@ -368,6 +610,40 @@ public final class RSAUtils {
   public static KeyPair getKeyPair(KeyStore keystore, String alias, char[] password) {
     try {
       Key key=keystore.getKey(alias,password);
+      if(key instanceof PrivateKey) {
+        Certificate cert=keystore.getCertificate(alias);
+        PublicKey publicKey=cert.getPublicKey();
+        return new KeyPair(publicKey,(PrivateKey)key);
+      }
+    } catch (UnrecoverableKeyException e) {
+    } catch (NoSuchAlgorithmException e) {
+    } catch (KeyStoreException e) {
+    }
+    return null;
+  }
+  /**
+   * 从keystore文件提取密钥对
+   * @param storePath 证书库路径
+   * @param storePass 证书库密码
+   * @param alias 证书别名
+   * @param keypass 私钥密码
+   * @password 私钥密码
+   * @return 密钥对
+   */
+  public static KeyPair getKeyPair(String storePath, String storePass, String alias, String keypass ) {
+    try {
+      File storeFile = new File(storePath);
+      KeyStore keystore = KeyStore.getInstance("BKS");
+      if(storeFile.exists() ){
+        try {
+          keystore.load(new FileInputStream(storePath), storePass.toCharArray());
+        }catch (Exception e){
+          return null;
+        }
+      }else {
+        return null;
+      }
+      Key key=keystore.getKey(alias, keypass.toCharArray());
       if(key instanceof PrivateKey) {
         Certificate cert=keystore.getCertificate(alias);
         PublicKey publicKey=cert.getPublicKey();
@@ -529,9 +805,17 @@ public final class RSAUtils {
   {
     try
     {
-      //提取私钥
-      AssetManager am = context.getResources().getAssets();
-      InputStream is = am.open(keystoreFile);
+      //先从数据文件夹下找keystore
+      File ks = context.getDir( "ks", context.MODE_PRIVATE );
+      File ksFile = new File( ks.getAbsolutePath()+ "/" + keystoreFile );
+      InputStream is = null;
+      if( ksFile.exists() ){
+        is = new FileInputStream( ksFile.getAbsolutePath());
+      }else{
+        //从初始assets下提取私钥
+        AssetManager am = context.getResources().getAssets();
+        is = am.open(keystoreFile);
+      }
 
       KeyStore keystore=KeyStore.getInstance(keyStoreType);
       keystore.load( is,storepass.toCharArray());
@@ -545,6 +829,35 @@ public final class RSAUtils {
       String targetStr = decipherAndroid( orgStr, Base64Utils.encode( privateBT ), segmentSize);
       //String targetStr = decipher( orgStr, privateKey, segmentSize);
       return targetStr;
+    } catch (Exception e){
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  /**
+   * 从keystore用私钥解密字符串，返回明文
+   *
+   */
+  public String decryptStr(Context context, String alias, String keypass, String storepass, String keyStoreType, String keystoreFile, String ciphertext, int segmentSize )
+  {
+    try
+    {
+      //提取私钥
+      AssetManager am = context.getResources().getAssets();
+      InputStream is = am.open(keystoreFile);
+
+      KeyStore keystore=KeyStore.getInstance(keyStoreType);
+      keystore.load( is,storepass.toCharArray());
+      KeyPair keyPair=getKeyPair(keystore,alias,keypass.toCharArray());
+      PrivateKey privateKey=keyPair.getPrivate();
+      byte[] privateBT = privateKey.getEncoded();
+      //读取待解密文件密文
+      if( null == ciphertext ) return null;
+      //分段RSA私钥解密
+      String cleartext = decipherAndroid( ciphertext, Base64Utils.encode( privateBT ), segmentSize);
+      //String targetStr = decipher( orgStr, privateKey, segmentSize);
+      return cleartext;
     } catch (Exception e){
       e.printStackTrace();
       return null;
@@ -777,7 +1090,7 @@ public final class RSAUtils {
 
   }
   /**
-   * 使用共钥加密
+   * 使用公钥加密
    * @param content 待加密内容
    * @param publicKeyBase64  公钥 base64 编码
    * @return 经过 base64 编码后的字符串
@@ -786,7 +1099,7 @@ public final class RSAUtils {
     return encipher(content,publicKeyBase64,-1);
   }
   /**
-   * 使用共钥加密（分段加密）
+   * 使用公钥加密（分段加密）
    * @param content 待加密内容
    * @param publicKeyBase64  公钥 base64 编码
    * @param segmentSize 分段大小,一般小于 keySize/8（段小于等于0时，将不使用分段加密）

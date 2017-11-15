@@ -30,6 +30,9 @@
 		<framework src="src/android/nlpos.gradle" custom="true" type="gradleReference"/>
 		
         <source-file src="libs/meSdk-3.2.0-SNAPSHOT.jar" target-dir="libs"/>
+		<source-file src="libs/bcmail-jdk14-1.58.jar" target-dir="libs"/>
+		<source-file src="libs/bcprov-jdk14-1.58.jar" target-dir="libs"/>
+		<source-file src="libs/bcpkix-jdk14-1.58.jar" target-dir="libs"/>
 		<source-file src="libs/zxing-core-3.1.0.jar" target-dir="libs"/>
 		<source-file src="libs/nlpos-res.aar" target-dir="libs"/>
 		<source-file src="libs/armeabi/libemvjni.so" target-dir="libs/armeabi"/>
@@ -53,5 +56,6 @@
 		<source-file src="src/android/SoundPoolImpl.java" target-dir="src/com/openunion/cordova/plugins/nlpos"/>
 		<source-file src="src/android/RSAUtils.java" target-dir="src/com/openunion/cordova/plugins/nlpos"/>
 		<source-file src="src/android/Base64Utils.java" target-dir="src/com/openunion/cordova/plugins/nlpos"/>
+		<source-file src="src/android/AESUtils.java" target-dir="src/com/openunion/cordova/plugins/nlpos"/>
 	</platform>
 </plugin>

@@ -102,6 +102,26 @@ NLPos.prototype.getDeviceInfo = function( success, error) {
   return exec(success, error,'nlpos', 'getDeviceInfo', []);
 };
 
+NLPos.prototype.initDevice = function( success, error) {
+  return exec(success, error,'nlpos', 'initDevice', []);
+};
+
+NLPos.prototype.encrypt = function( params, success, error) {
+  return exec(success, error,'nlpos', 'encrypt', [params]);
+};
+
+NLPos.prototype.decrypt = function( params, success, error) {
+  return exec(success, error,'nlpos', 'decrypt', [params]);
+};
+
+NLPos.prototype.writeKeyStore = function( params, success, error) {
+  return exec(success, error,'nlpos', 'writeKeyStore', [params]);
+};
+
+NLPos.prototype.writeTrustStore = function( params, success, error) {
+  return exec(success, error,'nlpos', 'writeTrustStore', [params]);
+};
+
 var nlpos = new NLPos(); // jshint ignore:line
 
 module.exports = nlpos;
