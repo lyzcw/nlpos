@@ -10,6 +10,8 @@ import org.json.JSONArray;
  */
 
 public class Constant {
+  //默认的SSLSocket服务主机：
+  public static final String socketip = "10.1.239.11";
   //默认AES加密初始向量
   public static final String iv = "OpenUnionInitvec";
   //默认服务端keystore路径
@@ -18,7 +20,7 @@ public class Constant {
   public static final String serverstorealias = "OpenUnionPosServer";
   //默认客户端keystore路径
   public static final String storepath = "posks.bks";
-  //默认服务端keystore密码
+  //默认信任服务端keystore密码
   public static final String storepass = "OU@POS";
   //默认服务端keystore秘钥密码
   public static final String keypass = "POS@OU";

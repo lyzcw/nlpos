@@ -13,5 +13,8 @@
     "cordova-android"
   ],
   "author": "lyzcw",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@ionic/storage": "^2.1.3"
+  }
 }

@@ -271,7 +271,44 @@ public final class RSAUtils {
     }
     return true;
   }
+  /**
+   * 将android客户端RSA密钥对字符串，并导入客户端端keystore(默认密钥长度为2048)
+   * @param alias 证书别名，服务端keystore中要唯一
+   * @param certStr 证书字符串
+   * @param privKey 私钥字符串
+   * @param keyStorePath keystore路径
+   * @param keyStorePass keystore密码
+   * @param keyPass 新生成私钥保护密码
+   *
+   * @return
+   */
+  public static boolean writeKeyStore(Context context, String alias, String certStr, byte[] privKey, String keyStorePath, String keyStorePass,  String keyPass )
+  {
+    try {
+      PrivateKey priv = getPrivateKey( privKey);
+      KeyStore clientKs = KeyStore.getInstance("BKS");
 
+      X509Certificate certificate = generateCertificate( certStr );
+      Certificate[] certChain = new Certificate[1];
+      certChain[0] = certificate;
+
+      keyStorePath = context.getDir("ks", context.MODE_PRIVATE ).getAbsolutePath() + "/" + keyStorePath;
+      File keyStoreFile = new File( keyStorePath );
+      if(keyStoreFile.exists() ){
+        clientKs.load(new FileInputStream(keyStorePath), keyStorePass.toCharArray());
+      }else{
+        clientKs.load(null, keyStorePass.toCharArray());
+      }
+      clientKs.setKeyEntry(alias, priv, keyPass.toCharArray(), certChain );
+      FileOutputStream writeStream = new FileOutputStream( keyStorePath );
+      clientKs.store(writeStream, keyStorePass.toCharArray());
+      writeStream.close();
+    } catch (Exception e) {
+      System.out.println("写入keystore失败:"+e.getMessage());
+      return false;
+    }
+    return true;
+  }
   /**
    * 将android客户端公钥证书字符串，并导入客户端信任keystore
    * @param alias 证书别名，服务端keystore中要唯一
@@ -567,7 +604,21 @@ public final class RSAUtils {
 
     return certificate;
   }
-
+  /**
+   * 由证书字符串生成公钥证书
+   * @param certStr 密钥对
+   * @return 证书
+   */
+  public static X509Certificate generateCertificate( String certStr ) throws Exception {
+    byte[] byteCert = Base64Utils.decode( certStr );
+    //转换成二进制流
+    ByteArrayInputStream bain = new ByteArrayInputStream(byteCert);
+    CertificateFactory cf = CertificateFactory.getInstance("X.509");
+    X509Certificate oCert = (X509Certificate)cf.generateCertificate(bain);
+    String info = oCert.getSubjectDN().getName();
+    System.out.println("字符串证书拥有者:"+info);
+    return oCert;
+  }
   /**
    * 随机生成RSA密钥对(默认密钥长度为1024)
    *

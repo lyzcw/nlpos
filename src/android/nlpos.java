@@ -105,6 +105,14 @@ public class nlpos extends CordovaPlugin {
       String params = (String) args.get(0);
       this.writeTrustStore( callbackContext, params );
       return true;
+    }else if (action.equals("signDevice")) {
+      String params = (String) args.get(0);
+      this.signDevice( callbackContext, params );
+      return true;
+    }else if (action.equals("saveParm")) {
+      String params = (String) args.get(0);
+      this.saveParm( callbackContext, params );
+      return true;
     }
     return false;
   }
@@ -484,6 +492,43 @@ public class nlpos extends CordovaPlugin {
     }
   }
 
+  private void signDevice( CallbackContext callbackContext, String params ) {
+    try {
+      if (null != params && !"".equals(params)) {
+        JSONObject paramsObject = new JSONObject(params);
+        String deviceid = paramsObject.getString("deviceid");
+        Context context = this.cordova.getActivity();
+        String rtnStr = SSLClient.signDevice(context, deviceid );
+        Log.d(LOG_TAG, rtnStr );
+        // map.put("status", SUCCESS);
+        // map.put("msg", "签到成功");
+        // map.put("data", rtnStr);
+        //map.put("clear", deStr);
+        callbackContext.success( rtnStr );
+
+      } else {
+        map.put("status", FAILED);
+        map.put("msg", "参数不能为空");
+        map.put("data", "");
+        callbackContext.success((new JSONObject(map)).toString());
+      }
+    }catch (JSONException e ) {
+      showMsg += "JSON参数错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
+      map.put("data", "");
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
+    }catch ( Exception e ) {
+      showMsg += "签到参数错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
+      map.put("data", "");
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
+    }
+  }
+
   private void encrypt( CallbackContext callbackContext, String params ) {
     try {
       if (null != params && !"".equals(params)) {
@@ -566,11 +611,11 @@ public class nlpos extends CordovaPlugin {
     try {
       if (null != params && !"".equals(params)) {
         JSONObject paramsObject = new JSONObject(params);
-        String pubKeyStr = paramsObject.getString("pubKeyStr");
         String privKeyStr = paramsObject.getString("privKeyStr");
         String posAlias = paramsObject.getString("posAlias");
+        String certStr = paramsObject.getString("certStr");
         Context context = this.cordova.getActivity();
-        if (RSAUtils.writeKeyStore(context, posAlias, Base64Utils.decode(pubKeyStr), Base64Utils.decode(privKeyStr), Constant.storepath, Constant.storepass, Constant.keypass, Constant.issuerDN, Constant.issuerDN, Constant.validity)){
+        if (RSAUtils.writeKeyStore(context, posAlias, certStr, Base64Utils.decode(privKeyStr), Constant.storepath, Constant.storepass, Constant.keypass)){
           map.put("status", SUCCESS);
           map.put("msg", "将密钥对写入keystore成功");
           map.put("data", "");
@@ -604,7 +649,7 @@ public class nlpos extends CordovaPlugin {
         JSONObject paramsObject = new JSONObject(params);
         String certStr = paramsObject.getString("certStr");
         Context context = this.cordova.getActivity();
-        if (RSAUtils.writeKeyStore(context, Constant.serverstorealias, certStr, Constant.serverstorepath, Constant.keypass)){
+        if (RSAUtils.writeKeyStore(context, Constant.serverstorealias, certStr, Constant.serverstorepath, Constant.storepass)){
           map.put("status", SUCCESS);
           map.put("msg", "将公钥证书写入keystore成功");
           map.put("data", "");
@@ -627,6 +672,42 @@ public class nlpos extends CordovaPlugin {
       map.put("status", FAILED);
       map.put("msg", showMsg);
       map.put("data", "");
+      LOG.d(LOG_TAG, showMsg);
+      callbackContext.success((new JSONObject(map)).toString());
+    }
+  }
+
+  private void saveParm( CallbackContext callbackContext, String params ) {
+    map.clear();
+    try {
+      if (null != params && !"".equals(params)) {
+        JSONObject paramsObject = new JSONObject(params);
+
+        String rtnStr = paramsObject.getString("parms");
+        if( null== rtnStr){
+          Log.d(LOG_TAG, "解析卡标准失败，请检查" );
+          map.put("status", FAILED);
+          map.put("msg", "解析卡标准失败，请检查");
+          callbackContext.success((new JSONObject(map)).toString());
+        }else{
+          rtnStr = rtnStr.replaceAll("\r", "").replaceAll("\n","").replaceAll("\t","").replaceAll("\\s","").replaceAll("　","").replaceAll(" ","");
+          Constant.cardrule = new JSONArray( rtnStr );
+          Log.d(LOG_TAG, rtnStr );
+          map.put("status", SUCCESS);
+          map.put("msg", "载入卡标准成功");
+          map.put("data", rtnStr);
+          callbackContext.success((new JSONObject(map)).toString());
+        }
+
+      } else {
+        map.put("status", FAILED);
+        map.put("msg", "json参数不能为空");
+        callbackContext.success((new JSONObject(map)).toString());
+      }
+    }catch (JSONException e ) {
+      showMsg += "JSON参数传递错误" + e.getMessage();
+      map.put("status", FAILED);
+      map.put("msg", showMsg);
       LOG.d(LOG_TAG, showMsg);
       callbackContext.success((new JSONObject(map)).toString());
     }

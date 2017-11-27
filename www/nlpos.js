@@ -122,6 +122,14 @@ NLPos.prototype.writeTrustStore = function( params, success, error) {
   return exec(success, error,'nlpos', 'writeTrustStore', [params]);
 };
 
+NLPos.prototype.signDevice = function( params, success, error) {
+  return exec(success, error,'nlpos', 'signDevice', [params]);
+};
+
+NLPos.prototype.saveParm = function( params, success, error) {
+  return exec(success, error,'nlpos', 'saveParm', [params]);
+};
+
 var nlpos = new NLPos(); // jshint ignore:line
 
 module.exports = nlpos;
