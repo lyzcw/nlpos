@@ -647,11 +647,15 @@ public class nlpos extends CordovaPlugin {
     try {
       if (null != params && !"".equals(params)) {
         JSONObject paramsObject = new JSONObject(params);
-        String certStr = paramsObject.getString("certStr");
+        String serverCert = paramsObject.getString("serverCert");
+        String caCertStr = paramsObject.getString("caCertStr");
+        String serverAlias = paramsObject.getString("serverAlias");
+        String caAlias = paramsObject.getString("caAlias");
         Context context = this.cordova.getActivity();
-        if (RSAUtils.writeKeyStore(context, Constant.serverstorealias, certStr, Constant.serverstorepath, Constant.storepass)){
+        if (RSAUtils.writeKeyStore(context,serverAlias, serverCert, Constant.serverstorepath, Constant.storepass) &&
+          RSAUtils.writeKeyStore(context, caAlias, caCertStr, Constant.serverstorepath, Constant.storepass)){
           map.put("status", SUCCESS);
-          map.put("msg", "将公钥证书写入keystore成功");
+          map.put("msg", "将服务端和CA公钥证书写入信任keystore成功");
           map.put("data", "");
           //map.put("clear", deStr);
           callbackContext.success((new JSONObject(map)).toString());
