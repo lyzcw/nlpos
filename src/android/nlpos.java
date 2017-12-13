@@ -504,8 +504,14 @@ public class nlpos extends CordovaPlugin {
         // map.put("msg", "签到成功");
         // map.put("data", rtnStr);
         //map.put("clear", deStr);
-        callbackContext.success( rtnStr );
-
+        if( null == rtnStr ){
+          map.put("status", FAILED);
+          map.put("msg", "SSL连接失败");
+          map.put("data", "");
+          callbackContext.success((new JSONObject(map)).toString());
+        }else {
+          callbackContext.success(rtnStr);
+        }
       } else {
         map.put("status", FAILED);
         map.put("msg", "参数不能为空");

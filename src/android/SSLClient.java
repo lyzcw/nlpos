@@ -163,6 +163,7 @@ public class SSLClient
     }catch(Exception e)
     {
       System.out.println(e);
+      return null;
     }
     return s;
   }
